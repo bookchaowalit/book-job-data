@@ -23,24 +23,24 @@ synthesis product.
 
 ```bash
 cd book-job-data
-PYTHONPATH=src:/path/to/solo-empire/infra/scripts \
-  /path/to/solo-empire/.venv/bin/python -m book_job_data.ingest \
+python -m pip install -e ".[lake]"
+python -m book_job_data.ingest \
   --input /path/to/book-job-scraping/data/job_postings.csv \
   --data-lake-uri /path/to/solo-empire/data/lake
 
 # Offline validation without storage
-PYTHONPATH=src python -m book_job_data.ingest --input fixtures/job_postings.csv --dry-run
+python -m book_job_data.ingest --input fixtures/job_postings.csv --dry-run
 
 # API reads Bronze only; no CSV is opened by GET handlers
 SOLO_EMPIRE_DATA_LAKE_URI=/path/to/solo-empire/data/lake \
-  PYTHONPATH=src:/path/to/solo-empire/infra/scripts \
   python -m book_job_data.api
 ```
 
-The shared `data_lake` adapter intentionally remains in the private
-Solo Empire infrastructure repository; public-repo CI runs contract and
-policy checks without copying that adapter. The parent repository runs the
-full Bronze/API E2E with the shared runtime.
+The shared `data_lake` adapter/runtime is installed from the public,
+MIT-licensed [`solo-empire-data-lake`](https://github.com/bookchaowalit/solo-empire-data-lake)
+repository at a pinned commit. The parent repository remains a compatibility
+integration boundary for its existing monorepo CI and Render service; the
+public product does not require the private parent checkout.
 
 Run the parent-repository E2E contract gate after installing `pyarrow` and
 `duckdb`:
@@ -83,8 +83,7 @@ SOLO_EMPIRE_DATA_LAKE_URI=s3://<bucket>/<prefix> \
 DATA_LAKE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com \
 LAKE_READ_MODE=parquet \
 LAKE_READ_FALLBACK=error \
-PYTHONPATH=src:/path/to/solo-empire/infra/scripts \
-  /path/to/solo-empire/.venv/bin/python -m book_job_data.api
+python -m book_job_data.api
 ```
 
 Inject `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from Infisical or the
@@ -102,8 +101,7 @@ prints credentials:
 npx --yes @infisical/cli@0.43.120 run \
   --projectId=<solo-empire-project-id> --env=dev --path=/cloudflare --silent -- \
   bash -lc 'export DATA_LAKE_CLOUD_WRITE_ENABLED=true; \
-    PYTHONPATH=src:/path/to/solo-empire/infra/scripts \
-    /path/to/solo-empire/.venv/bin/python scripts/r2_parity.py \
+    python scripts/r2_parity.py \
     --input fixtures/job_postings.csv \
     --data-lake-uri s3://<bucket>/portfolio-demo/book-job-data-001'
 ```
@@ -116,18 +114,17 @@ still storage parity only and does not replace the API read contract.
 
 ## Hosted deployment
 
-The read-only API can be deployed by the Solo Empire parent repository's
+The read-only API can be deployed directly from this public repository's
 bounded Render lane. Keep ingestion and CSV projection outside the hosted
-service; the hosted API reads Bronze Parquet from R2/S3 only. See the parent
-repository's deployment runbook for the Docker context and secret injection.
+service; the hosted API reads Bronze Parquet from R2/S3 only.
 
-In Render Dashboard, create a Web Service from the Solo Empire repository and
-use the Blueprint in `render.yaml`, or configure the same values manually:
+In Render Dashboard, create a Web Service from this repository and use the
+Blueprint in `render.yaml`, or configure the same values manually:
 
 ```text
 Runtime: Docker
 Plan: Free
-Dockerfile: infra/deploy/book-job-data/Dockerfile
+Dockerfile: Dockerfile
 Docker context: repository root
 Health check: /healthz
 ```

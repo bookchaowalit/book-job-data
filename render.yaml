@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: solo-empire-book-job-data
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: LAKE_READ_MODE
+        value: parquet
+      - key: LAKE_READ_FALLBACK
+        value: error
+      - key: SOLO_EMPIRE_DATA_LAKE_URI
+        sync: false
+      - key: DATA_LAKE_S3_ENDPOINT
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: BOOK_JOB_DATA_API_TOKEN
+        sync: false

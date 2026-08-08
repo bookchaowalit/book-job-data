@@ -9,6 +9,12 @@ from . import config
 
 
 def _load_shared():
+    try:
+        from data_lake import product_adapter as adapter  # type: ignore
+
+        return adapter
+    except ModuleNotFoundError:
+        pass
     current = config.PROJECT_ROOT.resolve()
     for parent in [current, *current.parents]:
         scripts = parent / "infra" / "scripts"
@@ -16,7 +22,13 @@ def _load_shared():
             if str(scripts) not in sys.path:
                 sys.path.insert(0, str(scripts))
             break
-    from data_lake import product_adapter as adapter  # type: ignore
+    try:
+        from data_lake import product_adapter as adapter  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
+            "or provide the Solo Empire parent infra/scripts path."
+        ) from exc
     return adapter
 
 

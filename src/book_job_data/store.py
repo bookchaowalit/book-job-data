@@ -12,6 +12,12 @@ from . import config, lake
 
 
 def _product_store():
+    try:
+        from data_lake import product_store  # type: ignore
+
+        return product_store
+    except ModuleNotFoundError:
+        pass
     current = config.PROJECT_ROOT.resolve()
     for parent in [current, *current.parents]:
         scripts = parent / "infra" / "scripts"
@@ -19,7 +25,13 @@ def _product_store():
             if str(scripts) not in sys.path:
                 sys.path.insert(0, str(scripts))
             break
-    from data_lake import product_store  # type: ignore
+    try:
+        from data_lake import product_store  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
+            "or provide the Solo Empire parent infra/scripts path."
+        ) from exc
     return product_store
 
 

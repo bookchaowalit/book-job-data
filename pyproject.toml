@@ -5,6 +5,13 @@ description = "Lake-first job discovery data contract for Solo Empire Track B."
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+lake = [
+  "duckdb>=1.1.0,<2.0.0",
+  "pyarrow>=14.0.0,<24.0.0",
+  "solo-empire-data-lake[lake] @ https://github.com/bookchaowalit/solo-empire-data-lake/archive/59d9d11898c975ff41966c2c5da66346a24b4779.tar.gz",
+]
+
 [project.scripts]
 book-job-data = "book_job_data.ingest:main"
 book-job-data-api = "book_job_data.api:main"
