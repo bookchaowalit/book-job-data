@@ -1,0 +1,13 @@
+[project]
+name = "book-job-data"
+version = "0.1.0"
+description = "Lake-first job discovery data contract for Solo Empire Track B."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+book-job-data = "book_job_data.ingest:main"
+book-job-data-api = "book_job_data.api:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
