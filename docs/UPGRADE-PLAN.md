@@ -26,8 +26,13 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
 - Verified: `tests/test_redaction_edge_cases.py` (11 of 14 cases fail on the
   old code; the non-contact cases pass on both); full suite 27 passed; ruff
   0.15.8 + 0.16.9.
-- P2: salary ranges written without spaces (`30000-50000`) are still masked
-  as phone numbers (pre-existing false positive).
+- Salary ranges glued with a dash (`30000-50000`, `25000–35000`,
+  `เงินเดือน120000-170000บาท`) are no longer masked as phones: an ascending
+  pair of 4+ digit amounts without a leading zero is kept (Thai numbers start
+  with 0 or +66); `02-1234567`, `081-2345678` and toll-free `1800-123456`
+  still mask. `30,000-50,000` and `฿30000-฿50000` are pinned as regressions.
+  Verified: 3 of 5 new range cases fail on the old code; full suite 29
+  passed; ruff 0.15.8 + 0.16.9.
 
 ## Done in this pass (pass 3)
 

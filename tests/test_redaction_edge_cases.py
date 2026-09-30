@@ -27,6 +27,22 @@ class RedactionEdgeCaseTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(redact_text(text), text)
 
+    def test_glued_salary_ranges_are_not_phones(self):
+        for text in (
+            "30000-50000",
+            "30,000-50,000",
+            "\u0e3f30000-\u0e3f50000",
+            "25000\u201335000 THB",
+            "\u0e40\u0e07\u0e34\u0e19\u0e40\u0e14\u0e37\u0e2d\u0e19120000-170000\u0e1a\u0e32\u0e17",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(redact_text(text), text)
+
+    def test_two_group_phones_still_masked(self):
+        for text in ("081-2345678", "02-1234567", "1800-123456", "+66-812345678"):
+            with self.subTest(text=text):
+                self.assertEqual(redact_text(text), PHONE_MASK)
+
 
 if __name__ == "__main__":
     unittest.main()

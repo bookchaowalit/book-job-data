@@ -62,6 +62,11 @@ _PHONE_CANDIDATE_RE = re.compile(
 # Invisible characters that split an address or number without showing.
 _INVISIBLE = dict.fromkeys(map(ord, "\u200b\u2060\ufeff\u00ad"))
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# "30000-50000": two amounts joined by one dash. Thai numbers always start
+# with 0 (or +66), so an ascending range of 4+ digit amounts without a leading
+# zero is a salary, not a phone ("02-1234567" and "081-2345678" still mask).
+# Toll-free "1800-..." is the exception and stays a phone.
+_RANGE_RE = re.compile(r"(?!1800\D)([1-9]\d{3,})[\-\u2010-\u2015\u2212]([1-9]\d{3,})")
 
 EMAIL_MASK = "[redacted-email]"
 PHONE_MASK = "[redacted-phone]"
@@ -71,6 +76,9 @@ def _mask_phone(match: re.Match[str]) -> str:
     text = match.group(0)
     digits = re.sub(r"\D", "", text)
     if not 9 <= len(digits) <= 15 or _DATE_RE.search(text):
+        return text
+    amount_range = _RANGE_RE.fullmatch(text)
+    if amount_range and int(amount_range[1]) <= int(amount_range[2]):
         return text
     return PHONE_MASK
 
