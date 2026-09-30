@@ -119,19 +119,9 @@ def select_latest_bronze_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]
 
 
 def landing_object_bytes(raw_key: str, *, data_lake_uri: Optional[str] = None) -> bytes:
-    """Replay exact landing bytes for ``raw_key``.
-
-    Reads through the adapter's ``ObjectStore`` directly instead of
-    ``product_adapter.landing_object_bytes``: the pinned standalone runtime
-    resolves a Solo Empire parent checkout there and fails with ``TypeError``
-    when the product runs outside the monorepo.
-    """
-    adapter = _pa()
+    """Replay exact landing bytes for ``raw_key`` via the shared adapter."""
     uri = data_lake_uri or default_data_lake_uri()
-    try:
-        return adapter.ObjectStore(uri).get_bytes(raw_key)
-    except adapter.StorageError as exc:
-        raise adapter.LakeIngestError(str(exc)) from exc
+    return _pa().landing_object_bytes(uri, raw_key)
 
 
 LakeUnavailable = RuntimeError
