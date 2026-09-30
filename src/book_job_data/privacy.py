@@ -48,9 +48,19 @@ TEXT_FIELDS = frozenset({
 })
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Group separators: ASCII space/dot/hyphen plus the no-break and thin spaces
+# and Unicode dashes that HTML-sourced text carries (&nbsp;, &ndash;, U+2011).
+_PHONE_SEP = "[ .\\-\u00a0\u2007\u2009\u200a\u202f\u2010-\u2015\u2212]"
+# Boundaries are ASCII-only: Thai has no spaces between words, so "โทร0812345678"
+# ("call ...") must still match, while URL paths, ids and decimals ("3.14...")
+# stay untouched.
 _PHONE_CANDIDATE_RE = re.compile(
-    r"(?<![\w/.])\+?\(?\d{1,4}\)?(?:[ .-]?\(?\d{2,5}\)?){2,5}(?![\w/])"
+    r"(?<![A-Za-z0-9_/])(?<!\d\.)\+?\(?\d{1,4}\)?(?:"
+    + _PHONE_SEP
+    + r"?\(?\d{2,5}\)?){2,5}(?![A-Za-z0-9_/])"
 )
+# Invisible characters that split an address or number without showing.
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u2060\ufeff\u00ad"))
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 EMAIL_MASK = "[redacted-email]"
@@ -68,6 +78,7 @@ def _mask_phone(match: re.Match[str]) -> str:
 def redact_text(value: str) -> str:
     if not value:
         return value
+    value = value.translate(_INVISIBLE)
     value = _EMAIL_RE.sub(EMAIL_MASK, value)
     return _PHONE_CANDIDATE_RE.sub(_mask_phone, value)
 

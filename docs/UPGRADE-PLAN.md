@@ -15,6 +15,20 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
   operator's local filesystem layout); `input_name` is enough for lineage.
 - P2: Add a `dev` extra (`pytest`, `ruff`) so CI and README share one install line.
 
+## Done in this pass (pass 4: edge cases)
+
+- Privacy leak fixed in `privacy.redact_text`: the phone pattern used `\w`
+  boundaries, and Thai letters are `\w`, so numbers glued to Thai words
+  (`โทร0812345678`, `ติดต่อ...ค่ะ`) and `Tel.0812345678` were never masked.
+  Group separators now include no-break/thin spaces and Unicode dashes
+  (`&nbsp;`, U+202F, U+2011, en dash, minus), and U+200B/U+2060/BOM/soft
+  hyphen are removed first so they cannot split an email or phone number.
+- Verified: `tests/test_redaction_edge_cases.py` (11 of 14 cases fail on the
+  old code; the non-contact cases pass on both); full suite 27 passed; ruff
+  0.15.8 + 0.16.9.
+- P2: salary ranges written without spaces (`30000-50000`) are still masked
+  as phone numbers (pre-existing false positive).
+
 ## Done in this pass (pass 3)
 
 - `tests/test_end_to_end_quality.py`: ingest a capture with `email`/`contact`/`phone`
