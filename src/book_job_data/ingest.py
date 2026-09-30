@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from . import config, lake
+from .privacy import sanitize_record
 from .store import canonical_url, stable_job_id, project_csv
 
 
@@ -43,7 +44,7 @@ def normalize_rows(rows: list[dict[str, Any]], *, provider: str, input_name: str
         row["observed_at"] = row["event_time"]
         row["provider"] = provider or row.get("source") or row.get("board") or "unknown"
         row["input_name"] = input_name
-        deduped[row["id"]] = row
+        deduped[row["id"]] = sanitize_record(row)
     return list(deduped.values())
 
 
@@ -51,7 +52,7 @@ def _dataset_for(path: Path) -> tuple[str, str]:
     name = path.name.lower()
     if name == "matched_jobs.csv":
         return config.DATASETS["job_matches"], config.DATASETS["job_matches_history"]
-    if name == "leads.csv" or "jobsdb_jobs" in name:
+    if name in {"leads.csv", "pipeline.csv"} or "jobsdb_jobs" in name:
         return config.DATASETS["job_leads"], config.DATASETS["job_leads_history"]
     return config.DEFAULT_DATASET, config.DEFAULT_HISTORY_DATASET
 
@@ -97,7 +98,13 @@ def ingest_capture(path: Path, *, data_lake_uri: str, provider: str = "book-job-
 
 def default_inputs() -> list[Path]:
     data = Path(__import__("os").environ.get("BOOK_JOB_SCRAPING_DATA_DIR", str(SCRAPER_REPO / "data")))
-    candidates = [data / "job_postings.csv", data / "matched_jobs.csv", data / "leads.csv", data / "exported" / "jobsdb_jobs.csv"]
+    candidates = [
+        data / "job_postings.csv",
+        data / "matched_jobs.csv",
+        data / "leads.csv",
+        data / "pipeline.csv",
+        data / "exported" / "jobsdb_jobs.csv",
+    ]
     return [path for path in candidates if path.is_file()]
 
 

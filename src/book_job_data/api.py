@@ -3,17 +3,106 @@ from __future__ import annotations
 
 import json
 import hmac
+import ipaddress
 import re
 import sys
+import threading
+import time
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import config
 from .lake import load_lineage
-from .store import envelope, get_record, load_dataset, paginate, utc_now_iso
+from .privacy import sanitize_record
+from .store import envelope, load_dataset, paginate, utc_now_iso
 
 _LOCAL_ORIGIN_RE = re.compile(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$", re.I)
+
+
+class _DatasetCache:
+    """Reuse loaded Bronze datasets for a short TTL instead of scanning per request."""
+
+    def __init__(self, ttl_seconds: float):
+        self.ttl = ttl_seconds
+        self._lock = threading.Lock()
+        self._entries: dict[tuple[str, bool], tuple[float, dict[str, Any]]] = {}
+
+    def get(self, dataset: str, *, latest_only: bool = True) -> dict[str, Any]:
+        key = (dataset, latest_only)
+        now = time.monotonic()
+        with self._lock:
+            hit = self._entries.get(key)
+            if hit and now - hit[0] < self.ttl:
+                return hit[1]
+        payload = load_dataset(dataset, latest_only=latest_only)
+        payload = {**payload, "items": [sanitize_record(item) for item in payload.get("items", [])]}
+        if self.ttl > 0:
+            with self._lock:
+                self._entries[key] = (now, payload)
+        return payload
+
+    def peek_status(self, dataset: str) -> str | None:
+        with self._lock:
+            hit = self._entries.get((dataset, True))
+        return hit[1].get("data_status") if hit else None
+
+
+class _RateLimiter:
+    """Sliding one-minute window per client address."""
+
+    def __init__(self, per_minute: int):
+        self.per_minute = per_minute
+        self._lock = threading.Lock()
+        self._hits: dict[str, deque[float]] = {}
+
+    def allow(self, client: str) -> bool:
+        if self.per_minute <= 0:
+            return True
+        now = time.monotonic()
+        with self._lock:
+            window = self._hits.setdefault(client, deque())
+            while window and now - window[0] >= 60:
+                window.popleft()
+            if len(window) >= self.per_minute:
+                return False
+            window.append(now)
+            if len(self._hits) > 10_000:  # drop idle clients so memory stays bounded
+                for key in [k for k, v in self._hits.items() if not v]:
+                    del self._hits[key]
+            return True
+
+
+CACHE = _DatasetCache(config.CACHE_TTL_SECONDS)
+LIMITER = _RateLimiter(config.RATE_LIMIT_PER_MINUTE)
+
+
+def _client_address(handler: BaseHTTPRequestHandler) -> str:
+    # Render's proxy appends the real peer to X-Forwarded-For; the rightmost
+    # entry is the one a client cannot spoof.
+    forwarded = handler.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[-1].strip()
+    return handler.client_address[0]
+
+
+def _is_loopback(host: str) -> bool:
+    if host == "localhost":
+        return True
+    try:  # "" and "0.0.0.0" mean every interface, which is not loopback
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def require_token_for_bind(host: str, token: str) -> None:
+    """Refuse to serve internal job data on a non-loopback address without a token."""
+    if not token and not _is_loopback(host):
+        raise SystemExit(
+            f"Refusing to bind book-job-data API to {host} without BOOK_JOB_DATA_API_TOKEN; "
+            "records are privacy_class=internal. Set the token or bind to 127.0.0.1."
+        )
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, body: dict[str, Any]) -> None:
@@ -88,7 +177,16 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
         qs = parse_qs(parsed.query)
-        if path != "/healthz" and not _authorized(self):
+        if path == "/healthz":
+            # Liveness only: no lake read, so platform probes stay cheap.
+            return _json_response(self, 200, {"status": "ok", "repository": config.REPO_NAME, "domain": config.DOMAIN, "data_status": CACHE.peek_status(config.DEFAULT_DATASET) or "not_loaded", "api_bind": f"{config.API_HOST}:{config.API_PORT}"})
+        if not LIMITER.allow(_client_address(self)):
+            return _json_response(
+                self,
+                429,
+                envelope(items=[], data_status="rate_limited", extra={"error": "rate limit exceeded; retry in a minute"}),
+            )
+        if not _authorized(self):
             return _json_response(
                 self,
                 401,
@@ -98,28 +196,28 @@ class Handler(BaseHTTPRequestHandler):
                     extra={"error": "read token required"},
                 ),
             )
-        if path == "/healthz":
-            payload = load_dataset(config.DEFAULT_DATASET)
-            return _json_response(self, 200, {"status": "ok", "repository": config.REPO_NAME, "domain": config.DOMAIN, "data_status": payload["data_status"], "storage_model": _storage_model(payload.get("source_kind")), "api_bind": f"{config.API_HOST}:{config.API_PORT}"})
         if path == "/v1/metadata":
-            datasets = {name: load_dataset(name, latest_only=name not in {config.DEFAULT_HISTORY_DATASET, "job_matches_history", "job_leads_history"}) for name in config.DATASETS.values()}
+            datasets = {name: CACHE.get(name, latest_only=name not in {config.DEFAULT_HISTORY_DATASET, "job_matches_history", "job_leads_history"}) for name in config.DATASETS.values()}
             record_payload = datasets[config.DEFAULT_DATASET]
             item = {"repository": config.REPO_NAME, "domain": config.DOMAIN, "schema_version": config.SCHEMA_VERSION, "port": config.API_PORT, "storage_model": _storage_model(record_payload.get("source_kind")), "records_source_kind": record_payload.get("source_kind"), "dataset_counts": {name: len(value.get("items", [])) for name, value in datasets.items()}, "lake_lineage": load_lineage(), "scraper_boundary": "file_capture_only", "api_bind": f"{config.API_HOST}:{config.API_PORT}"}
             return _json_response(self, 200, envelope(items=[item], data_status=record_payload["data_status"], retrieved_at=record_payload.get("retrieved_at")))
         if path == "/v1/records":
-            payload = load_dataset(_dataset(qs, config.DEFAULT_DATASET), latest_only=True)
+            payload = CACHE.get(_dataset(qs, config.DEFAULT_DATASET), latest_only=True)
             page, cursor = paginate(payload["items"], limit=_limit(qs), cursor=qs.get("cursor", [None])[0])
             return _json_response(self, 200, envelope(items=page, data_status=payload["data_status"], next_cursor=cursor, retrieved_at=payload.get("retrieved_at")))
         if path == "/v1/history":
             dataset = _dataset(qs, config.DEFAULT_HISTORY_DATASET)
             if not dataset.endswith("_history"):
                 dataset = f"{dataset}_history" if f"{dataset}_history" in config.DATASETS.values() else config.DEFAULT_HISTORY_DATASET
-            payload = load_dataset(dataset, latest_only=False)
+            payload = CACHE.get(dataset, latest_only=False)
             page, cursor = paginate(payload["items"], limit=_limit(qs), cursor=qs.get("cursor", [None])[0])
             return _json_response(self, 200, envelope(items=page, data_status=payload["data_status"], next_cursor=cursor, retrieved_at=payload.get("retrieved_at")))
         if path.startswith("/v1/records/"):
             record_id = unquote(path[len("/v1/records/"):])
-            item = get_record(record_id)
+            item = next(
+                (row for row in CACHE.get(config.DEFAULT_DATASET)["items"] if str(row.get("record_id")) == record_id),
+                None,
+            )
             if item is None:
                 return _json_response(self, 404, envelope(items=[], data_status="not_found", extra={"error": "record not found"}))
             return _json_response(self, 200, envelope(items=[item], data_status="ok"))
@@ -127,6 +225,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    require_token_for_bind(config.API_HOST, config.API_READ_TOKEN)
     server = ThreadingHTTPServer((config.API_HOST, config.API_PORT), Handler)
     print(f"book-job-data API listening on http://{config.API_HOST}:{config.API_PORT}")
     try:

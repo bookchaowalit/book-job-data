@@ -77,6 +77,24 @@ client sends it as a Bearer token without logging it. When
 the API reads the bounded Bronze Parquet glob directly from R2/S3 through
 DuckDB `httpfs`; it does not download a local mirror or open a scraper CSV.
 
+### Privacy and API limits
+
+- **Token required off loopback.** The API exits at startup when bound to a
+  non-loopback address (for example Render's `0.0.0.0`) without
+  `BOOK_JOB_DATA_API_TOKEN`. Every endpoint except `/healthz` needs
+  `Authorization: Bearer <token>`.
+- **Field allowlist and redaction.** `privacy.py` keeps only known `job.v1`
+  fields (so `pipeline.csv` `contact`/`email` columns never land in Bronze) and
+  masks email addresses and phone numbers in free-text fields. It runs at ingest
+  and again on every API response. The exact capture bytes remain only in the
+  internal landing zone as replay evidence.
+- **Cheap health check.** `/healthz` does not read the lake; `data_status` is
+  `not_loaded` until a data endpoint has warmed the cache.
+- **Cache and rate limit.** Loaded datasets are reused for
+  `BOOK_JOB_DATA_CACHE_TTL_SECONDS` (default 300). Each client gets
+  `BOOK_JOB_DATA_RATE_LIMIT_PER_MINUTE` requests (default 120, `0` disables),
+  keyed on the rightmost `X-Forwarded-For` entry; excess requests get `429`.
+
 ### Direct R2/S3 Bronze read
 
 Use the same read mode for local and hosted object storage. The URI selects the
