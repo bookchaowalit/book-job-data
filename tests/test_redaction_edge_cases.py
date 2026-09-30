@@ -43,6 +43,16 @@ class RedactionEdgeCaseTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(redact_text(text), PHONE_MASK)
 
+    def test_range_lookalike_phones_are_masked(self):
+        # "6681-2345678" is +66 81 234 5678 without the "+"; the others have
+        # mismatched amount lengths, so they cannot be a salary range.
+        for text in ("6681-2345678", "1234-567890", "10000-2000000", "66812-345678"):
+            with self.subTest(text=text):
+                self.assertEqual(redact_text(text), PHONE_MASK)
+
+    def test_salary_range_starting_1800_digits_survives(self):
+        self.assertEqual(redact_text("18000-25000"), "18000-25000")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -34,6 +34,12 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
   Verified: 3 of 5 new range cases fail on the old code; full suite 29
   passed; ruff 0.15.8 + 0.16.9.
 - Bumped the `[lake]` pin `68fb5a9` -> `4c24c66` (NDJSON/BOM/U+2028/double-decode fixes); 29 passed with the new package; ruff 0.15.8 + 0.16.9 clean.
+- Tightened the salary-range exemption: it only checked `left <= right`, so
+  `6681-2345678` (+66 without "+"), `1234-567890` and `10000-2000000` leaked
+  unmasked. Now both sides must be plain 4-7 digit amounts at most one digit
+  apart, the left side must not start with 0, 66 or toll-free 1800
+  (`18000-25000` still survives). Verified: the new lookalike cases fail on
+  the old code; full suite 28 passed / 3 skipped; ruff 0.15.8 + 0.16.9.
 
 ## Done in this pass (pass 3)
 
