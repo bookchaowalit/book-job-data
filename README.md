@@ -54,6 +54,10 @@ The gate uses the fixture and a temporary lake, starts the real `:8109` API,
 checks Bronze lineage and history, calls `job_client`, verifies refresh is
 forbidden, and confirms the API creates no CSV projection.
 
+On a Windows host, `.\ops\windows\scheduled-ingest.ps1 install` registers an
+hourly Task Scheduler ingest (idempotent: unchanged captures reuse their batch
+id). Check the gate from the parent repository with `task data:job:readiness`.
+
 The default input location is the sibling `book-job-scraping/data/` boundary.
 Set `BOOK_JOB_SCRAPING_DATA_DIR` when the capture directory is elsewhere.
 
