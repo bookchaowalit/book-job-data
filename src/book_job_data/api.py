@@ -140,6 +140,15 @@ def _storage_model(source_kind: Any) -> str:
     return "lake_first_job_bronze_duckdb"
 
 
+def _configured_storage_model() -> str:
+    """Storage model from configuration alone, so /healthz never reads the lake."""
+    if config.LAKE_READ_MODE == "iceberg":
+        return _storage_model("iceberg_rest_duckdb")
+    if (config.DATA_LAKE_URI or "").lower().startswith("s3://"):
+        return _storage_model("bronze_s3_parquet")
+    return _storage_model("bronze_parquet")
+
+
 def _authorized(handler: BaseHTTPRequestHandler) -> bool:
     expected = config.API_READ_TOKEN
     if not expected:
@@ -179,7 +188,7 @@ class Handler(BaseHTTPRequestHandler):
         qs = parse_qs(parsed.query)
         if path == "/healthz":
             # Liveness only: no lake read, so platform probes stay cheap.
-            return _json_response(self, 200, {"status": "ok", "repository": config.REPO_NAME, "domain": config.DOMAIN, "data_status": CACHE.peek_status(config.DEFAULT_DATASET) or "not_loaded", "api_bind": f"{config.API_HOST}:{config.API_PORT}"})
+            return _json_response(self, 200, {"status": "ok", "repository": config.REPO_NAME, "domain": config.DOMAIN, "data_status": CACHE.peek_status(config.DEFAULT_DATASET) or "not_loaded", "storage_model": _configured_storage_model(), "api_bind": f"{config.API_HOST}:{config.API_PORT}"})
         if not LIMITER.allow(_client_address(self)):
             return _json_response(
                 self,
