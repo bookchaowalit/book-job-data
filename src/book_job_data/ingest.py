@@ -35,7 +35,14 @@ def _event_time(row: dict[str, Any]) -> str:
 def normalize_rows(rows: list[dict[str, Any]], *, provider: str, input_name: str) -> list[dict[str, Any]]:
     deduped: dict[str, dict[str, Any]] = {}
     for raw in rows:
-        row = {str(key): str(value or "").strip() for key, value in raw.items() if key}
+        # DictReader puts surplus cells under a ``None`` key (a list); drop it.
+        row = {
+            str(key): str(value or "").strip()
+            for key, value in raw.items()
+            if key and not isinstance(value, list)
+        }
+        if not any(row.values()):
+            continue  # blank line or a row of empty cells: never a record
         url = canonical_url(row.get("url") or row.get("source_url") or row.get("apply_url") or row.get("link"))
         if url:
             row["canonical_url"] = url
@@ -63,8 +70,16 @@ def read_capture(path: Path) -> tuple[bytes, list[dict[str, Any]]]:
     return raw, list(csv.DictReader(io.StringIO(text)))
 
 
-def ingest_capture(path: Path, *, data_lake_uri: str, provider: str = "book-job-scraping") -> dict[str, Any]:
-    raw, rows = read_capture(path)
+def ingest_capture(
+    path: Path,
+    *,
+    data_lake_uri: str,
+    provider: str = "book-job-scraping",
+    capture: tuple[bytes, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Land one capture. ``capture`` reuses bytes/rows the caller already read,
+    so the lake receives exactly what was validated (no second file read)."""
+    raw, rows = capture if capture is not None else read_capture(path)
     current_dataset, history_dataset = _dataset_for(path)
     records = normalize_rows(rows, provider=provider, input_name=path.name)
     if not records:
@@ -126,11 +141,17 @@ def main(argv: list[str] | None = None) -> int:
         print("No scraper capture files found; run book-job-scraping first.")
         return 0
     normalized: list[tuple[Path, list[dict[str, Any]], tuple[str, str]]] = []
-    for path in inputs:
+    captures: dict[Path, tuple[bytes, list[dict[str, Any]]]] = {}
+    for path in dict.fromkeys(inputs):  # the same file twice would land twice
         if not path.is_file():
             print(f"Input does not exist: {path}", file=sys.stderr)
             return 2
-        raw, rows = read_capture(path)
+        try:
+            raw, rows = read_capture(path)
+        except (UnicodeDecodeError, csv.Error) as exc:
+            print(f"Input is not a UTF-8 CSV capture: {path}: {exc}", file=sys.stderr)
+            return 2
+        captures[path] = (raw, rows)
         datasets = _dataset_for(path)
         normalized.append((path, normalize_rows(rows, provider=args.provider, input_name=path.name), datasets))
     if args.dry_run:
@@ -140,7 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     results: list[dict[str, Any]] = []
     try:
         for path, _rows, _datasets in normalized:
-            results.append(ingest_capture(path, data_lake_uri=data_lake_uri, provider=args.provider))
+            results.append(
+                ingest_capture(
+                    path, data_lake_uri=data_lake_uri, provider=args.provider, capture=captures[path]
+                )
+            )
     except Exception as exc:  # fail closed: no projection is touched
         print(f"Lake ingest failed; CSV projection was not written: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
