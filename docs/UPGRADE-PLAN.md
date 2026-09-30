@@ -33,6 +33,7 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
   still mask. `30,000-50,000` and `฿30000-฿50000` are pinned as regressions.
   Verified: 3 of 5 new range cases fail on the old code; full suite 29
   passed; ruff 0.15.8 + 0.16.9.
+- Bumped the `[lake]` pin `68fb5a9` -> `4c24c66` (NDJSON/BOM/U+2028/double-decode fixes); 29 passed with the new package; ruff 0.15.8 + 0.16.9 clean.
 
 ## Done in this pass (pass 3)
 
