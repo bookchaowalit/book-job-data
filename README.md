@@ -61,6 +61,17 @@ id). Check the gate from the parent repository with `task data:job:readiness`.
 The default input location is the sibling `book-job-scraping/data/` boundary.
 Set `BOOK_JOB_SCRAPING_DATA_DIR` when the capture directory is elsewhere.
 
+## Tests
+
+```bash
+python -m pip install -e ".[lake]" pytest ruff
+ruff check .
+python -m pytest -q -rs
+```
+
+The lake test writes a temporary local lake through the pinned
+`solo-empire-data-lake` runtime; no network or parent checkout is needed.
+
 ## Contract
 
 `source=book-job-data`, `domain=jobs`, `schema_version=job.v1`, port `8109`,
