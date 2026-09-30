@@ -14,7 +14,7 @@ SCHEMA_VERSION = "job.v1"
 # Render/containers provide API_HOST explicitly; local development remains loopback.
 API_HOST = os.environ.get("API_HOST", "127.0.0.1")
 API_PORT = int(os.environ.get("PORT", os.environ.get("API_PORT", "8109")))
-API_READ_TOKEN = os.environ.get("BOOK_JOB_DATA_API_TOKEN", os.environ.get("API_READ_TOKEN", "")).strip()
+API_READ_TOKEN = os.environ.get("BOOK_JOB_DATA_API_TOKEN", os.environ.get("API_READ_TOKEN", "")).strip()
 # Loaded datasets are reused for this many seconds; the lake changes at most hourly.
 CACHE_TTL_SECONDS = float(os.environ.get("BOOK_JOB_DATA_CACHE_TTL_SECONDS", "300"))
 # Per-client request budget for authenticated endpoints (0 disables the limit).
