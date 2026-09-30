@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from . import config
 from .lake import load_lineage
 from .privacy import sanitize_record
-from .store import envelope, load_dataset, paginate, utc_now_iso
+from .store import envelope, load_dataset, paginate
 
 _LOCAL_ORIGIN_RE = re.compile(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$", re.I)
 
