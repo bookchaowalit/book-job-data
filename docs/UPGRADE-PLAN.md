@@ -8,7 +8,9 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
 
 ## Backlog
 
-- P0: Confirm the first CI run on GitHub is green; keep it required on `main`.
+- P0: Confirm GitHub Actions `CI` is green once this work reaches `main`; the workflow triggers
+  only on `main` pushes, so `claude/untitled-session-bhlj06` has been verified locally only
+  (31 passed). Keep it required on `main`.
 - P1: When `solo-empire-data-lake` moves, bump the pinned commit in `[lake]` together with
   the other book-*-data repos (same SHA everywhere).
 - P1: Stop writing the absolute `input_path` into landing metadata (it records the
