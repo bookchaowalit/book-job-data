@@ -48,10 +48,38 @@ TEXT_FIELDS = frozenset({
 })
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Group separators: ASCII space/dot/hyphen plus the no-break and thin spaces
+# and Unicode dashes that HTML-sourced text carries (&nbsp;, &ndash;, U+2011).
+_PHONE_SEP = "[ .\\-\u00a0\u2007\u2009\u200a\u202f\u2010-\u2015\u2212]"
+# Boundaries are ASCII-only: Thai has no spaces between words, so "โทร0812345678"
+# ("call ...") must still match, while URL paths, ids and decimals ("3.14...")
+# stay untouched.
 _PHONE_CANDIDATE_RE = re.compile(
-    r"(?<![\w/.])\+?\(?\d{1,4}\)?(?:[ .-]?\(?\d{2,5}\)?){2,5}(?![\w/])"
+    r"(?<![A-Za-z0-9_/])(?<!\d\.)\+?\(?\d{1,4}\)?(?:"
+    + _PHONE_SEP
+    + r"?\(?\d{2,5}\)?){2,5}(?![A-Za-z0-9_/])"
 )
+# Invisible characters that split an address or number without showing.
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u2060\ufeff\u00ad"))
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# "30000-50000": two amounts joined by one dash. Thai numbers always start
+# with 0 (or 66 when the "+" is dropped), so an ascending range of two plain
+# 4-7 digit amounts of similar length (at most one digit apart) without a
+# leading 0/66 is a salary, not a phone ("02-1234567", "081-2345678",
+# "6681-2345678" and "1234-567890" still mask). Toll-free "1800-..." is the
+# exception and stays a phone.
+_RANGE_RE = re.compile(
+    r"(?!1800\D)(?!66)([1-9]\d{3,6})[\-\u2010-\u2015\u2212]([1-9]\d{3,6})"
+)
+
+
+def _is_amount_range(text: str) -> bool:
+    match = _RANGE_RE.fullmatch(text)
+    if not match:
+        return False
+    low, high = match[1], match[2]
+    return abs(len(low) - len(high)) <= 1 and int(low) <= int(high)
+
 
 EMAIL_MASK = "[redacted-email]"
 PHONE_MASK = "[redacted-phone]"
@@ -62,12 +90,15 @@ def _mask_phone(match: re.Match[str]) -> str:
     digits = re.sub(r"\D", "", text)
     if not 9 <= len(digits) <= 15 or _DATE_RE.search(text):
         return text
+    if _is_amount_range(text):
+        return text
     return PHONE_MASK
 
 
 def redact_text(value: str) -> str:
     if not value:
         return value
+    value = value.translate(_INVISIBLE)
     value = _EMAIL_RE.sub(EMAIL_MASK, value)
     return _PHONE_CANDIDATE_RE.sub(_mask_phone, value)
 

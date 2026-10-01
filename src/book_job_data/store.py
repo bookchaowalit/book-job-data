@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -152,13 +151,27 @@ def envelope(*, items: list[dict[str, Any]], data_status: str, next_cursor: Opti
 
 
 def project_csv(items: list[dict[str, Any]], *, path: Path) -> Path:
-    """Explicit CLI projection; callers invoke only after all lake writes pass."""
+    """Explicit CLI projection; callers invoke only after all lake writes pass.
+
+    Written to a same-directory temp file and swapped in with ``os.replace``,
+    so an interrupted run leaves the previous projection intact.
+    """
     import csv
+    import os
+    import tempfile
 
     path.parent.mkdir(parents=True, exist_ok=True)
     keys = sorted({key for item in items for key in item})
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=keys, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(items)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=keys, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(items)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
     return path

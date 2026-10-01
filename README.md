@@ -61,6 +61,26 @@ id). Check the gate from the parent repository with `task data:job:readiness`.
 The default input location is the sibling `book-job-scraping/data/` boundary.
 Set `BOOK_JOB_SCRAPING_DATA_DIR` when the capture directory is elsewhere.
 
+Capture handling: blank lines and rows of empty cells are skipped (a capture
+with no real rows fails before any lake write), surplus cells beyond the
+header are ignored, a non-UTF-8 input exits with status 2, a file passed twice
+lands once, and each capture is read once so the lake receives exactly the
+bytes that were validated. `--project-csv` output is written atomically.
+
+## Tests
+
+```bash
+python -m pip install -e ".[lake]" pytest ruff
+ruff check .
+python -m pytest -q -rs
+```
+
+The lake tests write a temporary local lake through the pinned
+`solo-empire-data-lake` runtime; no network or parent checkout is needed.
+`tests/test_end_to_end_quality.py` reads Bronze (snapshot and history) and the
+API items back and asserts that only allowlisted fields exist and no contact
+detail from the capture survives.
+
 ## Contract
 
 `source=book-job-data`, `domain=jobs`, `schema_version=job.v1`, port `8109`,

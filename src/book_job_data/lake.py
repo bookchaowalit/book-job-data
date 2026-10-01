@@ -119,7 +119,9 @@ def select_latest_bronze_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]
 
 
 def landing_object_bytes(raw_key: str, *, data_lake_uri: Optional[str] = None) -> bytes:
-    return _pa().landing_object_bytes(data_lake_uri or default_data_lake_uri(), raw_key)
+    """Replay exact landing bytes for ``raw_key`` via the shared adapter."""
+    uri = data_lake_uri or default_data_lake_uri()
+    return _pa().landing_object_bytes(uri, raw_key)
 
 
 LakeUnavailable = RuntimeError
