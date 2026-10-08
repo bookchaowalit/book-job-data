@@ -1,0 +1,8 @@
+system_id: bookchaowalit/book-apps/tools/book-job-data-public
+prefix: BJD
+brand: "BOOK JOB DATA"
+subtitle: "data product ของงาน: ingest capture เข้า lake พร้อม lineage และ API อ่านอย่างเดียว"
+footer: "Book Job Data — ฉบับร่างเพื่อพิจารณา"
+color: "#2f4b6e"
+audience: internal
+tier: L1
