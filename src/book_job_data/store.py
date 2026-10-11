@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import sys
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -17,19 +16,13 @@ def _product_store():
         return product_store
     except ModuleNotFoundError:
         pass
-    current = config.PROJECT_ROOT.resolve()
-    for parent in [current, *current.parents]:
-        scripts = parent / "infra" / "scripts"
-        if (scripts / "data_lake" / "product_store.py").is_file():
-            if str(scripts) not in sys.path:
-                sys.path.insert(0, str(scripts))
-            break
+    lake._use_sibling_runtime()
     try:
         from data_lake import product_store  # type: ignore
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
-            "or provide the Solo Empire parent infra/scripts path."
+            "or set SOLO_DATA_LAKE_ROOT to a solo-data-lake checkout."
         ) from exc
     return product_store
 
@@ -95,7 +88,6 @@ def _contract():
         bronze_schema_version=config.BRONZE_SCHEMA_VERSION,
         project_root=config.PROJECT_ROOT,
         data_lake_uri=config.DATA_LAKE_URI,
-        solo_empire_root=config.SOLO_EMPIRE_ROOT,
         lineage_filename=config.LINEAGE_FILE,
         datasets=tuple(config.DATASETS.values()),
     )

@@ -26,13 +26,13 @@ cd book-job-data
 python -m pip install -e ".[lake]"
 python -m book_job_data.ingest \
   --input /path/to/book-job-scraping/data/job_postings.csv \
-  --data-lake-uri /path/to/solo-empire/data/lake
+  --data-lake-uri /path/to/solo-data-lake/data/lake
 
 # Offline validation without storage
 python -m book_job_data.ingest --input fixtures/job_postings.csv --dry-run
 
 # API reads Bronze only; no CSV is opened by GET handlers
-SOLO_EMPIRE_DATA_LAKE_URI=/path/to/solo-empire/data/lake \
+SOLO_EMPIRE_DATA_LAKE_URI=/path/to/solo-data-lake/data/lake \
   python -m book_job_data.api
 ```
 
@@ -189,9 +189,9 @@ After deployment, verify the hosted path without enabling the lake fallback:
 ```bash
 BOOK_JOB_DATA_URL=https://<service>.onrender.com \
 BOOK_JOB_DATA_API_TOKEN='<token from secret manager>' \
-PYTHONPATH=/path/to/solo-empire/infra/scripts \
-  /path/to/solo-empire/.venv/bin/python \
-  /path/to/solo-empire/infra/scripts/data_lake/hosted_job_api_e2e.py
+PYTHONPATH=/path/to/solo-data-lake/infra/scripts \
+  /path/to/solo-data-lake/.venv/bin/python \
+  /path/to/solo-data-lake/infra/scripts/data_lake/hosted_job_api_e2e.py
 ```
 
 Expected output has `status=verified`,

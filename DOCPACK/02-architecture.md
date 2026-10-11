@@ -103,7 +103,7 @@ sequenceDiagram
 | `solo-empire-data-lake` | library | pinned commit; MIT |
 | Cloudflare R2 | storage | S3 API ผ่าน `DATA_LAKE_S3_ENDPOINT` |
 | Consumers ภายใน | ขาออก (HTTP) | `job.v1` envelope; `job_client` fallback อ่าน Bronze ด้วย DuckDB |
-| Parent readiness | ตรวจ | `task data:job:readiness` (`infra/scripts/data_lake/job_data_readiness.py`) |
+| solo-data-lake readiness | ตรวจ | `task data:job:readiness` (`infra/scripts/data_lake/job_data_readiness.py`) |
 
 ## 7. Deployment topology
 

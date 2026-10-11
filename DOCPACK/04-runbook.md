@@ -66,13 +66,13 @@ Windows Task Scheduler (รายชั่วโมง, idempotent):
 
 1. สร้าง Web Service จาก repo นี้ด้วย Blueprint `render.yaml` (Docker, Free, health `/healthz`)
 2. ตั้งค่า secret ใน Render Environment (ไม่ใส่ใน YAML)
-3. Deploy แล้วรัน hosted verifier จาก parent:
+3. Deploy แล้วรัน hosted verifier จาก solo-data-lake:
 
 ```bash
 BOOK_JOB_DATA_URL=https://<service>.onrender.com \
 BOOK_JOB_DATA_API_TOKEN=<from secret manager> \
-PYTHONPATH=<solo-empire>/infra/scripts \
-  <solo-empire>/.venv/bin/python <solo-empire>/infra/scripts/data_lake/hosted_job_api_e2e.py
+PYTHONPATH=<solo-data-lake>/infra/scripts \
+  <solo-data-lake>/.venv/bin/python <solo-data-lake>/infra/scripts/data_lake/hosted_job_api_e2e.py
 ```
 
 ผลที่คาดหวัง: `status=verified`, `storage_model=lake_first_job_bronze_s3_duckdb`, `records_source_kind=bronze_s3_parquet`
@@ -102,7 +102,7 @@ PYTHONPATH=<solo-empire>/infra/scripts \
 ```bash
 curl -fsS http://127.0.0.1:8109/healthz                 # ไม่อ่าน lake
 curl -fsS -H "Authorization: Bearer $BOOK_JOB_DATA_API_TOKEN" http://127.0.0.1:8109/v1/metadata
-task data:job:readiness                                 # จาก parent: reconcile batch + freshness
+task data:job:readiness                                 # จาก solo-data-lake: reconcile batch + freshness
 .\ops\windows\scheduled-ingest.ps1 status               # LastTaskResult
 ```
 

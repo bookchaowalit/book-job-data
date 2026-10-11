@@ -1,11 +1,29 @@
 """Thin shared-adapter wrapper for book-job-data."""
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any, Optional
 
 from . import config
+
+
+def _use_sibling_runtime() -> None:
+    """Put a solo-data-lake checkout (``SOLO_DATA_LAKE_ROOT``) on ``sys.path``.
+
+    Only used when the ``solo-empire-data-lake`` package is not installed.
+    """
+    root = config.SOLO_DATA_LAKE_ROOT.strip()
+    if not root or importlib.util.find_spec("data_lake") is not None:
+        return
+    scripts = Path(root).expanduser().resolve() / "infra" / "scripts"
+    if not (scripts / "data_lake" / "product_adapter.py").is_file():
+        raise ImportError(
+            f"SOLO_DATA_LAKE_ROOT={root} has no infra/scripts/data_lake/product_adapter.py"
+        )
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
 
 
 def _load_shared():
@@ -15,19 +33,13 @@ def _load_shared():
         return adapter
     except ModuleNotFoundError:
         pass
-    current = config.PROJECT_ROOT.resolve()
-    for parent in [current, *current.parents]:
-        scripts = parent / "infra" / "scripts"
-        if (scripts / "data_lake" / "product_adapter.py").is_file():
-            if str(scripts) not in sys.path:
-                sys.path.insert(0, str(scripts))
-            break
+    _use_sibling_runtime()
     try:
         from data_lake import product_adapter as adapter  # type: ignore
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
-            "or provide the Solo Empire parent infra/scripts path."
+            "or set SOLO_DATA_LAKE_ROOT to a solo-data-lake checkout."
         ) from exc
     return adapter
 
@@ -52,7 +64,6 @@ def _contract():
         bronze_schema_version=config.BRONZE_SCHEMA_VERSION,
         project_root=config.PROJECT_ROOT,
         data_lake_uri=config.DATA_LAKE_URI,
-        solo_empire_root=config.SOLO_EMPIRE_ROOT,
         lineage_filename=config.LINEAGE_FILE,
         datasets=tuple(config.DATASETS.values()),
     )
@@ -62,7 +73,6 @@ def default_data_lake_uri() -> str:
     return _pa().default_data_lake_uri(
         data_lake_uri=config.DATA_LAKE_URI,
         project_root=config.PROJECT_ROOT,
-        solo_empire_root=config.SOLO_EMPIRE_ROOT,
     )
 
 
