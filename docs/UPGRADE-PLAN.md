@@ -66,7 +66,7 @@ Pass 1: 5.5/10 -> 7/10 — the real lake test failed in CI: the pinned
 - `[tool.ruff.lint] select = ["E4", "E7", "E9", "F"]`: unpinned ruff 0.16 widened its
   defaults (40 findings here) and would have failed `ruff check .` in CI.
 - Verified: fresh venv `pip install -e ".[lake]"` from the pinned tarball — 17/17 pass;
-  also with `SOLO_DATA_LAKE_ROOT=<solo-data-lake>`; ruff 0.15 and 0.16 clean.
+  also with `SOLO_DATA_LAKE_ROOT=<data-lake>`; ruff 0.15 and 0.16 clean.
 
 ## Done in pass 1
 

@@ -22,7 +22,7 @@ def _product_store():
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
-            "or set SOLO_DATA_LAKE_ROOT to a solo-data-lake checkout."
+            "or set SOLO_DATA_LAKE_ROOT to a data-lake checkout."
         ) from exc
     return product_store
 

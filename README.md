@@ -37,7 +37,7 @@ SOLO_EMPIRE_DATA_LAKE_URI=/path/to/solo-data-lake/data/lake \
 ```
 
 The shared `data_lake` adapter/runtime is installed from the public,
-MIT-licensed [`solo-empire-data-lake`](https://github.com/bookchaowalit/solo-empire-data-lake)
+MIT-licensed [`solo-empire-data-lake`](https://github.com/bookchaowalit/data-lake-core)
 repository at a pinned commit. The parent repository remains a compatibility
 integration boundary for its existing monorepo CI and Render service; the
 public product does not require the private parent checkout.

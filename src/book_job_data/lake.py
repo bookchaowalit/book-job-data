@@ -10,7 +10,7 @@ from . import config
 
 
 def _use_sibling_runtime() -> None:
-    """Put a solo-data-lake checkout (``SOLO_DATA_LAKE_ROOT``) on ``sys.path``.
+    """Put a data-lake checkout (``SOLO_DATA_LAKE_ROOT``) on ``sys.path``.
 
     Only used when the ``solo-empire-data-lake`` package is not installed.
     """
@@ -39,7 +39,7 @@ def _load_shared():
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Shared lake runtime is not installed. Run python -m pip install -e .[lake] "
-            "or set SOLO_DATA_LAKE_ROOT to a solo-data-lake checkout."
+            "or set SOLO_DATA_LAKE_ROOT to a data-lake checkout."
         ) from exc
     return adapter
 
