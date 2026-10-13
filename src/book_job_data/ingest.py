@@ -21,7 +21,7 @@ from .privacy import sanitize_record
 from .store import canonical_url, stable_job_id, project_csv
 
 
-SCRAPER_REPO = config.PROJECT_ROOT.parent / "book-job-scraping"
+SCRAPER_REPO = config.PROJECT_ROOT.parent / "career-job-scraper"
 
 
 def _event_time(row: dict[str, Any]) -> str:
