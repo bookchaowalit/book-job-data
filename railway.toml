@@ -1,0 +1,15 @@
+# Railway (Singapore, serverless): the read-only job.v1 API over R2 Bronze.
+# Secrets (R2 keys, API token) are Railway variables only; see README "Hosted deployment".
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+sleepApplication = true
+
+[deploy.multiRegionConfig.asia-southeast1-eqsg3a]
+numReplicas = 1

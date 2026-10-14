@@ -156,6 +156,14 @@ still storage parity only and does not replace the API read contract.
 
 ## Hosted deployment
 
+**Live (2026-10-14):** Railway project `book-job-data`, service `book-job-data-api`
+(Singapore, serverless; `railway.toml`), deployed with `railway up --ci --service book-job-data-api`.
+`/healthz` is public; every `/v1/*` route needs `BOOK_JOB_DATA_API_TOKEN`. The image ships
+the AWS CLI because the pinned `data_lake` runtime lists and reads `s3://` objects through it.
+The first read after the service wakes loads Bronze from R2 and can take a minute or more;
+later reads come from the 300-second cache. The Render lane below is the earlier,
+superseded target.
+
 The read-only API can be deployed directly from this public repository's
 bounded Render lane. Keep ingestion and CSV projection outside the hosted
 service; the hosted API reads Bronze Parquet from R2/S3 only.

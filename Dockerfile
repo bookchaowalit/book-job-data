@@ -11,8 +11,11 @@ WORKDIR /app
 COPY pyproject.toml README.md LICENSE /app/
 COPY src /app/src
 
+# The pinned data_lake runtime lists and reads s3:// (R2) objects through the AWS CLI.
 RUN python -m pip install --no-cache-dir --disable-pip-version-check \
-    ".[lake]"
+    ".[lake]" "awscli>=1.33,<2" \
+    && useradd --system --uid 10001 --create-home jobdata
+USER jobdata
 
 EXPOSE 8109
 CMD ["python", "-m", "book_job_data.api"]
