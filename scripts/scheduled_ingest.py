@@ -17,8 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOG_FILE = ROOT / "data" / "ingest.log"
 # The scraper refreshes job_postings every 6 hours; this runs from a separate
-# task, so it still notices when the scraper task stops entirely.
-MAX_CAPTURE_AGE_HOURS = float(os.environ.get("BOOK_JOB_DATA_MAX_CAPTURE_AGE_HOURS", "12"))
+# task, so it still notices when the scraper task stops entirely. The 8h
+# SLO leaves two hours for capture completion and the hourly ingest tick.
+MAX_CAPTURE_AGE_HOURS = float(os.environ.get("BOOK_JOB_DATA_MAX_CAPTURE_AGE_HOURS", "8"))
 STALE_EXIT_CODE = 3
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 # Record a stack dump if a scheduled run ever hangs (no console to inspect).
