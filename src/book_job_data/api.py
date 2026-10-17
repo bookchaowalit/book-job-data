@@ -1,4 +1,5 @@
 """Read-only job.v1 API backed by Bronze Parquet/DuckDB."""
+
 from __future__ import annotations
 
 import json
@@ -188,12 +189,25 @@ class Handler(BaseHTTPRequestHandler):
         qs = parse_qs(parsed.query)
         if path == "/healthz":
             # Liveness only: no lake read, so platform probes stay cheap.
-            return _json_response(self, 200, {"status": "ok", "repository": config.REPO_NAME, "domain": config.DOMAIN, "data_status": CACHE.peek_status(config.DEFAULT_DATASET) or "not_loaded", "storage_model": _configured_storage_model(), "api_bind": f"{config.API_HOST}:{config.API_PORT}"})
+            return _json_response(
+                self,
+                200,
+                {
+                    "status": "ok",
+                    "repository": config.REPO_NAME,
+                    "domain": config.DOMAIN,
+                    "data_status": CACHE.peek_status(config.DEFAULT_DATASET) or "not_loaded",
+                    "storage_model": _configured_storage_model(),
+                    "api_bind": f"{config.API_HOST}:{config.API_PORT}",
+                },
+            )
         if not LIMITER.allow(_client_address(self)):
             return _json_response(
                 self,
                 429,
-                envelope(items=[], data_status="rate_limited", extra={"error": "rate limit exceeded; retry in a minute"}),
+                envelope(
+                    items=[], data_status="rate_limited", extra={"error": "rate limit exceeded; retry in a minute"}
+                ),
             )
         if not _authorized(self):
             return _json_response(
@@ -206,31 +220,83 @@ class Handler(BaseHTTPRequestHandler):
                 ),
             )
         if path == "/v1/metadata":
-            datasets = {name: CACHE.get(name, latest_only=name not in {config.DEFAULT_HISTORY_DATASET, "job_matches_history", "job_leads_history"}) for name in config.DATASETS.values()}
+            datasets = {
+                name: CACHE.get(
+                    name,
+                    latest_only=name
+                    not in {config.DEFAULT_HISTORY_DATASET, "job_matches_history", "job_leads_history"},
+                )
+                for name in config.DATASETS.values()
+            }
             record_payload = datasets[config.DEFAULT_DATASET]
-            item = {"repository": config.REPO_NAME, "domain": config.DOMAIN, "schema_version": config.SCHEMA_VERSION, "port": config.API_PORT, "storage_model": _storage_model(record_payload.get("source_kind")), "records_source_kind": record_payload.get("source_kind"), "dataset_counts": {name: len(value.get("items", [])) for name, value in datasets.items()}, "lake_lineage": load_lineage(), "scraper_boundary": "file_capture_only", "api_bind": f"{config.API_HOST}:{config.API_PORT}"}
-            return _json_response(self, 200, envelope(items=[item], data_status=record_payload["data_status"], retrieved_at=record_payload.get("retrieved_at")))
+            item = {
+                "repository": config.REPO_NAME,
+                "domain": config.DOMAIN,
+                "schema_version": config.SCHEMA_VERSION,
+                "port": config.API_PORT,
+                "storage_model": _storage_model(record_payload.get("source_kind")),
+                "records_source_kind": record_payload.get("source_kind"),
+                "dataset_counts": {name: len(value.get("items", [])) for name, value in datasets.items()},
+                "lake_lineage": load_lineage(),
+                "scraper_boundary": "file_capture_only",
+                "api_bind": f"{config.API_HOST}:{config.API_PORT}",
+            }
+            return _json_response(
+                self,
+                200,
+                envelope(
+                    items=[item],
+                    data_status=record_payload["data_status"],
+                    retrieved_at=record_payload.get("retrieved_at"),
+                ),
+            )
         if path == "/v1/records":
             payload = CACHE.get(_dataset(qs, config.DEFAULT_DATASET), latest_only=True)
             page, cursor = paginate(payload["items"], limit=_limit(qs), cursor=qs.get("cursor", [None])[0])
-            return _json_response(self, 200, envelope(items=page, data_status=payload["data_status"], next_cursor=cursor, retrieved_at=payload.get("retrieved_at")))
+            return _json_response(
+                self,
+                200,
+                envelope(
+                    items=page,
+                    data_status=payload["data_status"],
+                    next_cursor=cursor,
+                    retrieved_at=payload.get("retrieved_at"),
+                ),
+            )
         if path == "/v1/history":
             dataset = _dataset(qs, config.DEFAULT_HISTORY_DATASET)
             if not dataset.endswith("_history"):
-                dataset = f"{dataset}_history" if f"{dataset}_history" in config.DATASETS.values() else config.DEFAULT_HISTORY_DATASET
+                dataset = (
+                    f"{dataset}_history"
+                    if f"{dataset}_history" in config.DATASETS.values()
+                    else config.DEFAULT_HISTORY_DATASET
+                )
             payload = CACHE.get(dataset, latest_only=False)
             page, cursor = paginate(payload["items"], limit=_limit(qs), cursor=qs.get("cursor", [None])[0])
-            return _json_response(self, 200, envelope(items=page, data_status=payload["data_status"], next_cursor=cursor, retrieved_at=payload.get("retrieved_at")))
+            return _json_response(
+                self,
+                200,
+                envelope(
+                    items=page,
+                    data_status=payload["data_status"],
+                    next_cursor=cursor,
+                    retrieved_at=payload.get("retrieved_at"),
+                ),
+            )
         if path.startswith("/v1/records/"):
-            record_id = unquote(path[len("/v1/records/"):])
+            record_id = unquote(path[len("/v1/records/") :])
             item = next(
                 (row for row in CACHE.get(config.DEFAULT_DATASET)["items"] if str(row.get("record_id")) == record_id),
                 None,
             )
             if item is None:
-                return _json_response(self, 404, envelope(items=[], data_status="not_found", extra={"error": "record not found"}))
+                return _json_response(
+                    self, 404, envelope(items=[], data_status="not_found", extra={"error": "record not found"})
+                )
             return _json_response(self, 200, envelope(items=[item], data_status="ok"))
-        return _json_response(self, 404, envelope(items=[], data_status="not_found", extra={"error": "unknown endpoint"}))
+        return _json_response(
+            self, 404, envelope(items=[], data_status="not_found", extra={"error": "unknown endpoint"})
+        )
 
 
 def main() -> None:

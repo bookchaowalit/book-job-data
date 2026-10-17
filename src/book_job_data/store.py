@@ -1,4 +1,5 @@
 """Bronze-backed store; CSV is input/projection only, never API source."""
+
 from __future__ import annotations
 
 import hashlib
@@ -95,7 +96,12 @@ def _contract():
 
 def load_dataset(dataset: str, *, data_lake_uri: Optional[str] = None, latest_only: bool = True) -> dict[str, Any]:
     if dataset not in config.DATASETS.values():
-        return {"items": [], "data_status": "malformed", "error": f"unknown dataset: {dataset}", "source_kind": "bronze_parquet"}
+        return {
+            "items": [],
+            "data_status": "malformed",
+            "error": f"unknown dataset: {dataset}",
+            "source_kind": "bronze_parquet",
+        }
     return _ps().load_bronze_dataset(
         _contract(),
         dataset,
@@ -126,11 +132,20 @@ def get_record(record_id: str, *, data_lake_uri: Optional[str] = None) -> Option
     return None
 
 
-def paginate(items: list[dict[str, Any]], *, limit: int = 50, cursor: Optional[str] = None) -> tuple[list[dict[str, Any]], Optional[str]]:
+def paginate(
+    items: list[dict[str, Any]], *, limit: int = 50, cursor: Optional[str] = None
+) -> tuple[list[dict[str, Any]], Optional[str]]:
     return _ps().paginate(items, limit=limit, cursor=cursor)
 
 
-def envelope(*, items: list[dict[str, Any]], data_status: str, next_cursor: Optional[str] = None, retrieved_at: Optional[str] = None, extra: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def envelope(
+    *,
+    items: list[dict[str, Any]],
+    data_status: str,
+    next_cursor: Optional[str] = None,
+    retrieved_at: Optional[str] = None,
+    extra: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     return _ps().envelope(
         schema_version=config.SCHEMA_VERSION,
         source=config.REPO_NAME,

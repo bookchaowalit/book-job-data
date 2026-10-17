@@ -1,3 +1,4 @@
+# CI + security baseline (DevSecOps Phase 1). Public repository: GitHub-hosted runners.
 name: CI
 
 on:
@@ -6,34 +7,27 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
-  contract:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install package
-        run: python -m pip install -e ".[lake]" pytest ruff
-      - name: Lint
-        run: ruff check .
-      - name: Run contract and policy tests
-        env:
-          FREE_ONLY: "true"
-          ALLOW_EXTERNAL_NETWORK: "false"
-          ALLOW_PAID_PROVIDER: "false"
-        run: python -m pytest -q -rs
-      - name: Compile package
-        run: python -m compileall -q src
-      - name: Check CLI help
-        run: |
-          python -m book_job_data.ingest --help
-          book-job-data --help
+  data:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-python.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1
+    with:
+      python-version: "3.12" # matches the Dockerfile (python:3.12-slim)
+      # The lake extra (duckdb, pyarrow, data-lake-core) is what the contract tests exercise.
+      install-command: uv pip install -e ".[lake]" pytest
+      # Same gates as the previous CI: offline contract/policy tests (no network, no paid
+      # providers), compile, and the CLI entry points.
+      test-command: >-
+        FREE_ONLY=true ALLOW_EXTERNAL_NETWORK=false ALLOW_PAID_PROVIDER=false python -m pytest -q -rs
+        && python -m compileall -q src
+        && python -m book_job_data.ingest --help
+        && book-job-data --help
+
+  security:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/security.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1

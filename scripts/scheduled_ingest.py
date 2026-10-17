@@ -4,6 +4,7 @@
 Meant for pythonw.exe under Windows Task Scheduler, where there is no console
 and sys.stdout/sys.stderr are None.
 """
+
 from __future__ import annotations
 
 import faulthandler

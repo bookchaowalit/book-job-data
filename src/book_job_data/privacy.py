@@ -6,6 +6,7 @@ free-text fields have email addresses and phone numbers masked. The exact
 source bytes stay in the internal landing zone as replay evidence; they are
 never served by the API.
 """
+
 from __future__ import annotations
 
 import re
@@ -14,38 +15,93 @@ from typing import Any
 # Columns the scraper writes (job_postings, career_postings, matched_jobs,
 # pipeline/leads) plus fields added by ingest and the Bronze item builder.
 POSTING_FIELDS = {
-    "title", "company", "location", "salary", "url", "source", "keyword",
-    "posted", "tags", "scraped_at", "description", "search_lane",
+    "title",
+    "company",
+    "location",
+    "salary",
+    "url",
+    "source",
+    "keyword",
+    "posted",
+    "tags",
+    "scraped_at",
+    "description",
+    "search_lane",
 }
 MATCH_FIELDS = {
-    "rank", "score", "visa_sponsorship", "qualification_status", "policy_version",
-    "employment_type", "work_arrangement", "thailand_eligibility",
-    "concurrent_employment", "engagement_boundary", "application_readiness",
-    "qualification_reasons", "primary_matches", "secondary_matches", "bonuses",
-    "verified_role_requirements", "verified_destination_country",
-    "verified_destination_eligibility", "verified_career_transition",
-    "verified_employment_terms", "verification_source_url", "verified_at",
-    "verified_employment_type", "verified_work_arrangement",
-    "verified_thailand_eligibility", "verified_concurrent_employment",
-    "verified_engagement_boundary", "verified_bridge_compensation",
-    "verified_scope_duration", "verified_mentor", "verified_conversion_path",
+    "rank",
+    "score",
+    "visa_sponsorship",
+    "qualification_status",
+    "policy_version",
+    "employment_type",
+    "work_arrangement",
+    "thailand_eligibility",
+    "concurrent_employment",
+    "engagement_boundary",
+    "application_readiness",
+    "qualification_reasons",
+    "primary_matches",
+    "secondary_matches",
+    "bonuses",
+    "verified_role_requirements",
+    "verified_destination_country",
+    "verified_destination_eligibility",
+    "verified_career_transition",
+    "verified_employment_terms",
+    "verification_source_url",
+    "verified_at",
+    "verified_employment_type",
+    "verified_work_arrangement",
+    "verified_thailand_eligibility",
+    "verified_concurrent_employment",
+    "verified_engagement_boundary",
+    "verified_bridge_compensation",
+    "verified_scope_duration",
+    "verified_mentor",
+    "verified_conversion_path",
     "verification_notes",
 }
 # pipeline.csv lead rows; its "contact" and "email" columns are intentionally absent.
 LEAD_FIELDS = {"lead_id", "status", "value", "next_action", "notes"}
 SYSTEM_FIELDS = {
-    "id", "canonical_url", "event_time", "observed_at", "provider", "input_name",
-    "record_id", "ingest_run_id", "source_record_id", "raw_object_key",
-    "source_url", "apply_url", "link", "board", "created_date", "date",
+    "id",
+    "canonical_url",
+    "event_time",
+    "observed_at",
+    "provider",
+    "input_name",
+    "record_id",
+    "ingest_run_id",
+    "source_record_id",
+    "raw_object_key",
+    "source_url",
+    "apply_url",
+    "link",
+    "board",
+    "created_date",
+    "date",
 }
 ALLOWED_FIELDS = frozenset(POSTING_FIELDS | MATCH_FIELDS | LEAD_FIELDS | SYSTEM_FIELDS)
 
 # Free text that may quote a recruiter's contact details.
-TEXT_FIELDS = frozenset({
-    "title", "company", "location", "salary", "tags", "description", "keyword",
-    "qualification_reasons", "verification_notes", "notes", "next_action",
-    "verified_role_requirements", "verified_employment_terms",
-})
+TEXT_FIELDS = frozenset(
+    {
+        "title",
+        "company",
+        "location",
+        "salary",
+        "tags",
+        "description",
+        "keyword",
+        "qualification_reasons",
+        "verification_notes",
+        "notes",
+        "next_action",
+        "verified_role_requirements",
+        "verified_employment_terms",
+    }
+)
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # Group separators: ASCII space/dot/hyphen plus the no-break and thin spaces
@@ -55,9 +111,7 @@ _PHONE_SEP = "[ .\\-\u00a0\u2007\u2009\u200a\u202f\u2010-\u2015\u2212]"
 # ("call ...") must still match, while URL paths, ids and decimals ("3.14...")
 # stay untouched.
 _PHONE_CANDIDATE_RE = re.compile(
-    r"(?<![A-Za-z0-9_/])(?<!\d\.)\+?\(?\d{1,4}\)?(?:"
-    + _PHONE_SEP
-    + r"?\(?\d{2,5}\)?){2,5}(?![A-Za-z0-9_/])"
+    r"(?<![A-Za-z0-9_/])(?<!\d\.)\+?\(?\d{1,4}\)?(?:" + _PHONE_SEP + r"?\(?\d{2,5}\)?){2,5}(?![A-Za-z0-9_/])"
 )
 # Invisible characters that split an address or number without showing.
 _INVISIBLE = dict.fromkeys(map(ord, "\u200b\u2060\ufeff\u00ad"))
@@ -68,9 +122,7 @@ _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # leading 0/66 is a salary, not a phone ("02-1234567", "081-2345678",
 # "6681-2345678" and "1234-567890" still mask). Toll-free "1800-..." is the
 # exception and stays a phone.
-_RANGE_RE = re.compile(
-    r"(?!1800\D)(?!66)([1-9]\d{3,6})[\-\u2010-\u2015\u2212]([1-9]\d{3,6})"
-)
+_RANGE_RE = re.compile(r"(?!1800\D)(?!66)([1-9]\d{3,6})[\-\u2010-\u2015\u2212]([1-9]\d{3,6})")
 
 
 def _is_amount_range(text: str) -> bool:

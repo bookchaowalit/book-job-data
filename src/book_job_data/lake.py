@@ -1,4 +1,5 @@
 """Thin shared-adapter wrapper for book-job-data."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -19,9 +20,7 @@ def _use_sibling_runtime() -> None:
         return
     scripts = Path(root).expanduser().resolve() / "infra" / "scripts"
     if not (scripts / "data_lake" / "product_adapter.py").is_file():
-        raise ImportError(
-            f"SOLO_DATA_LAKE_ROOT={root} has no infra/scripts/data_lake/product_adapter.py"
-        )
+        raise ImportError(f"SOLO_DATA_LAKE_ROOT={root} has no infra/scripts/data_lake/product_adapter.py")
     if str(scripts) not in sys.path:
         sys.path.insert(0, str(scripts))
 
@@ -103,21 +102,25 @@ def ingest_to_lake(
 
 
 def write_lineage(result: dict[str, Any], *, dataset: str, data_dir: Optional[Path] = None) -> Path:
-    return _pa().write_lineage(
-        _contract(), result, dataset=dataset, data_dir=Path(data_dir or config.DATA_DIR)
-    )
+    return _pa().write_lineage(_contract(), result, dataset=dataset, data_dir=Path(data_dir or config.DATA_DIR))
 
 
 def load_lineage(data_dir: Optional[Path] = None) -> Optional[dict[str, Any]]:
     return _pa().load_lineage(Path(data_dir or config.DATA_DIR), filename=config.LINEAGE_FILE)
 
 
-def read_bronze_rows(dataset: str, *, data_lake_uri: Optional[str] = None, sql: str | None = None) -> list[dict[str, Any]]:
+def read_bronze_rows(
+    dataset: str, *, data_lake_uri: Optional[str] = None, sql: str | None = None
+) -> list[dict[str, Any]]:
     return _pa().read_bronze_rows(_contract(), dataset, data_lake_uri=data_lake_uri or default_data_lake_uri(), sql=sql)
 
 
-def read_iceberg_rows(dataset: str, *, data_lake_uri: Optional[str] = None, sql: str | None = None) -> list[dict[str, Any]]:
-    return _pa().read_iceberg_rows(_contract(), dataset, data_lake_uri=data_lake_uri or default_data_lake_uri(), sql=sql)
+def read_iceberg_rows(
+    dataset: str, *, data_lake_uri: Optional[str] = None, sql: str | None = None
+) -> list[dict[str, Any]]:
+    return _pa().read_iceberg_rows(
+        _contract(), dataset, data_lake_uri=data_lake_uri or default_data_lake_uri(), sql=sql
+    )
 
 
 def parse_payload_json(row: dict[str, Any]) -> dict[str, Any]:

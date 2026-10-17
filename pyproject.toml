@@ -19,6 +19,10 @@ book-job-data-api = "book_job_data.api:main"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 
+[tool.ruff]
+# The code base is written to 120 columns; keep it rather than rewrap every file.
+line-length = 120
+
 [tool.ruff.lint]
 # Pin the classic default rule set explicitly so newer ruff releases (0.16+
 # widened the defaults) do not change what CI enforces.

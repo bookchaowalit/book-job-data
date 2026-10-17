@@ -5,6 +5,7 @@ The scraper repository remains a collection-only producer. This boundary reads
 its file handoff, archives exact CSV bytes, writes Bronze, then optionally
 creates a CSV projection after every lake write succeeds.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,11 +37,7 @@ def normalize_rows(rows: list[dict[str, Any]], *, provider: str, input_name: str
     deduped: dict[str, dict[str, Any]] = {}
     for raw in rows:
         # DictReader puts surplus cells under a ``None`` key (a list); drop it.
-        row = {
-            str(key): str(value or "").strip()
-            for key, value in raw.items()
-            if key and not isinstance(value, list)
-        }
+        row = {str(key): str(value or "").strip() for key, value in raw.items() if key and not isinstance(value, list)}
         if not any(row.values()):
             continue  # blank line or a row of empty cells: never a record
         url = canonical_url(row.get("url") or row.get("source_url") or row.get("apply_url") or row.get("link"))
@@ -92,8 +89,11 @@ def ingest_capture(
         "dataset_role": "snapshot",
     }
     snapshot = lake.ingest_to_lake(
-        raw=raw, records=records, dataset=current_dataset,
-        data_lake_uri=data_lake_uri, metadata=metadata,
+        raw=raw,
+        records=records,
+        dataset=current_dataset,
+        data_lake_uri=data_lake_uri,
+        metadata=metadata,
         provider=provider,
     )
     # The shared ingest manifest keys batches by raw checksum. Add a
@@ -102,13 +102,23 @@ def ingest_capture(
     # snapshot above remains the exact source bytes used for replay.
     history_raw = raw + f"\n# book-job-data dataset={history_dataset}\n".encode("utf-8")
     history = lake.ingest_to_lake(
-        raw=history_raw, records=records, dataset=history_dataset,
-        data_lake_uri=data_lake_uri, metadata={**metadata, "dataset_role": "history"},
+        raw=history_raw,
+        records=records,
+        dataset=history_dataset,
+        data_lake_uri=data_lake_uri,
+        metadata={**metadata, "dataset_role": "history"},
         provider=provider,
     )
     lake.write_lineage(snapshot, dataset=current_dataset, data_dir=config.DATA_DIR)
     lake.write_lineage(history, dataset=history_dataset, data_dir=config.DATA_DIR)
-    return {"path": str(path), "dataset": current_dataset, "history_dataset": history_dataset, "records": len(records), "snapshot": snapshot, "history": history}
+    return {
+        "path": str(path),
+        "dataset": current_dataset,
+        "history_dataset": history_dataset,
+        "records": len(records),
+        "snapshot": snapshot,
+        "history": history,
+    }
 
 
 def default_inputs() -> list[Path]:
@@ -132,8 +142,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Lake URI (defaults to the shared Solo Empire configuration)",
     )
     parser.add_argument("--provider", default="book-job-scraping")
-    parser.add_argument("--project-csv", action="store_true", help="Write projections only after all captures land successfully")
-    parser.add_argument("--dry-run", action="store_true", help="Validate and normalize captures without writing the lake")
+    parser.add_argument(
+        "--project-csv", action="store_true", help="Write projections only after all captures land successfully"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Validate and normalize captures without writing the lake"
+    )
     args = parser.parse_args(argv)
     data_lake_uri = args.data_lake_uri or lake.default_data_lake_uri()
     inputs = [Path(value).expanduser() for value in args.inputs] if args.inputs else default_inputs()
@@ -155,16 +169,24 @@ def main(argv: list[str] | None = None) -> int:
         datasets = _dataset_for(path)
         normalized.append((path, normalize_rows(rows, provider=args.provider, input_name=path.name), datasets))
     if args.dry_run:
-        print(json.dumps({"status": "dry_run", "captures": [{"path": str(p), "records": len(rows), "dataset": ds[0]} for p, rows, ds in normalized]}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "dry_run",
+                    "captures": [
+                        {"path": str(p), "records": len(rows), "dataset": ds[0]} for p, rows, ds in normalized
+                    ],
+                },
+                indent=2,
+            )
+        )
         return 0
 
     results: list[dict[str, Any]] = []
     try:
         for path, _rows, _datasets in normalized:
             results.append(
-                ingest_capture(
-                    path, data_lake_uri=data_lake_uri, provider=args.provider, capture=captures[path]
-                )
+                ingest_capture(path, data_lake_uri=data_lake_uri, provider=args.provider, capture=captures[path])
             )
     except Exception as exc:  # fail closed: no projection is touched
         print(f"Lake ingest failed; CSV projection was not written: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -175,7 +197,23 @@ def main(argv: list[str] | None = None) -> int:
                 next(rows for path, rows, _ in normalized if str(path) == result["path"]),
                 path=config.DATA_DIR / f"{result['dataset']}.csv",
             )
-    print(json.dumps({"status": "success", "captures": [{"path": r["path"], "dataset": r["dataset"], "history_dataset": r["history_dataset"], "records": r["records"]} for r in results]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "captures": [
+                    {
+                        "path": r["path"],
+                        "dataset": r["dataset"],
+                        "history_dataset": r["history_dataset"],
+                        "records": r["records"],
+                    }
+                    for r in results
+                ],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

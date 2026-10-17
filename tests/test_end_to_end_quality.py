@@ -1,4 +1,5 @@
 """End-to-end privacy through Bronze, capture validation and CLI robustness."""
+
 from __future__ import annotations
 
 import contextlib
@@ -16,7 +17,7 @@ from book_job_data.store import load_history, load_records, project_csv
 CAPTURE = (
     "title,company,url,source,scraped_at,description,email,contact,phone,notes_internal\n"
     "Data Engineer,Acme,https://acme.example/jobs/1?utm_source=x,RemoteOK,2026-08-08T00:00:00Z,"
-    "\"Email jobs@acme.example or call +66 81 234 5678\",hr@acme.example,Jane Doe,+66812345678,secret\n"
+    '"Email jobs@acme.example or call +66 81 234 5678",hr@acme.example,Jane Doe,+66812345678,secret\n'
     ",,,,,,,,,\n"
     "\n"
     "Analyst,Beta,https://beta.example/jobs/2,RemoteOK,2026-08-08T01:00:00Z,Remote role,,,,\n"
@@ -88,12 +89,21 @@ class BronzePrivacyTests(unittest.TestCase):
                 return real_read(path)
 
             out = io.StringIO()
-            with mock.patch.object(config, "DATA_DIR", root / "projection"), \
-                    mock.patch.object(ingest, "read_capture", side_effect=counting_read), \
-                    contextlib.redirect_stdout(out):
+            with (
+                mock.patch.object(config, "DATA_DIR", root / "projection"),
+                mock.patch.object(ingest, "read_capture", side_effect=counting_read),
+                contextlib.redirect_stdout(out),
+            ):
                 code = ingest.main(
-                    ["--input", str(source), "--input", str(source),
-                     "--data-lake-uri", str(root / "lake"), "--project-csv"]
+                    [
+                        "--input",
+                        str(source),
+                        "--input",
+                        str(source),
+                        "--data-lake-uri",
+                        str(root / "lake"),
+                        "--project-csv",
+                    ]
                 )
             self.assertEqual(code, 0)
             self.assertEqual(calls, [source])  # read once, even when repeated
@@ -128,8 +138,10 @@ class CaptureValidationTests(unittest.TestCase):
             source = Path(tmp) / "job_postings.csv"
             source.write_bytes(b"title,url\n\xff\xfe,\n")
             err = io.StringIO()
-            with contextlib.redirect_stderr(err), \
-                    mock.patch.object(lake, "default_data_lake_uri", return_value=str(Path(tmp) / "lake")):
+            with (
+                contextlib.redirect_stderr(err),
+                mock.patch.object(lake, "default_data_lake_uri", return_value=str(Path(tmp) / "lake")),
+            ):
                 self.assertEqual(ingest.main(["--input", str(source), "--dry-run"]), 2)
             self.assertIn("not a UTF-8 CSV", err.getvalue())
 

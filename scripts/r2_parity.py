@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Operator-gated R2 parity verifier for the job-data capture boundary."""
+
 from __future__ import annotations
 
 import argparse
@@ -33,19 +34,29 @@ def main() -> int:
     from data_lake.storage import ObjectStore  # type: ignore
 
     keys = ObjectStore(args.data_lake_uri).list_keys()
-    print(json.dumps({
-        "status": "verified",
-        "prefix": args.data_lake_uri,
-        "datasets": {
-            first["dataset"]: {"rows": first["records"], "raw_bytes_exact": replayed == raw, "manifest": first["snapshot"]["manifest_key"]},
-            first["history_dataset"]: {"rows": first["records"], "manifest": first["history"]["manifest_key"]},
-        },
-        "snapshot_retry_idempotent": first["snapshot"]["run_id"] == retry["snapshot"]["run_id"],
-        "history_retry_idempotent": first["history"]["run_id"] == retry["history"]["run_id"],
-        "object_count": len(keys),
-        "provider": args.provider,
-        "source_boundary": "book-job-scraping file capture only",
-    }, ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "status": "verified",
+                "prefix": args.data_lake_uri,
+                "datasets": {
+                    first["dataset"]: {
+                        "rows": first["records"],
+                        "raw_bytes_exact": replayed == raw,
+                        "manifest": first["snapshot"]["manifest_key"],
+                    },
+                    first["history_dataset"]: {"rows": first["records"], "manifest": first["history"]["manifest_key"]},
+                },
+                "snapshot_retry_idempotent": first["snapshot"]["run_id"] == retry["snapshot"]["run_id"],
+                "history_retry_idempotent": first["history"]["run_id"] == retry["history"]["run_id"],
+                "object_count": len(keys),
+                "provider": args.provider,
+                "source_boundary": "book-job-scraping file capture only",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
