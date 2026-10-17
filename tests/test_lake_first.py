@@ -24,7 +24,10 @@ def _shared_runtime_available() -> bool:
 class JobNormalizationTests(unittest.TestCase):
     def test_canonical_url_and_stable_id_drop_tracking_query(self):
         self.assertEqual(canonical_url("https://EXAMPLE.com/jobs/data?utm_source=x"), "https://example.com/jobs/data")
-        self.assertEqual(stable_job_id({"url": "https://example.com/jobs/data?x=1"}), stable_job_id({"url": "https://example.com/jobs/data?x=2"}))
+        self.assertEqual(
+            stable_job_id({"url": "https://example.com/jobs/data?x=1"}),
+            stable_job_id({"url": "https://example.com/jobs/data?x=2"}),
+        )
 
     def test_normalize_rows_adds_lineage_fields_and_deduplicates(self):
         rows = [{"title": "Old", "url": "https://example.com/job"}, {"title": "New", "url": "https://example.com/job"}]

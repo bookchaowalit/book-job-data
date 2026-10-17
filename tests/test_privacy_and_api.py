@@ -1,4 +1,5 @@
 """PII allowlist/redaction and API hardening (token guard, cache, rate limit)."""
+
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -31,7 +32,8 @@ class PrivacyTests(unittest.TestCase):
     def test_ingest_normalization_applies_allowlist(self):
         rows = normalize_rows(
             [{"title": "Dev", "url": "https://e.com/1", "email": "hr@e.com", "description": "mail hr@e.com"}],
-            provider="fixture", input_name="job_postings.csv",
+            provider="fixture",
+            input_name="job_postings.csv",
         )
         self.assertNotIn("email", rows[0])
         self.assertEqual(rows[0]["description"], f"mail {EMAIL_MASK}")
@@ -49,14 +51,16 @@ class PrivacyTests(unittest.TestCase):
         )
 
     def test_normalize_rows_preserves_qualification_evidence(self):
-        rows = [{
-            "title": "Contract Engineer",
-            "url": "https://example.com/contract",
-            "qualification_status": "PASS",
-            "policy_version": "contract-first-thailand-v1",
-            "employment_type": "Contract",
-            "application_readiness": "REVIEW_REQUIRED",
-        }]
+        rows = [
+            {
+                "title": "Contract Engineer",
+                "url": "https://example.com/contract",
+                "qualification_status": "PASS",
+                "policy_version": "contract-first-thailand-v1",
+                "employment_type": "Contract",
+                "application_readiness": "REVIEW_REQUIRED",
+            }
+        ]
         result = normalize_rows(rows, provider="fixture", input_name="matched_jobs.csv")
         self.assertEqual(result[0]["qualification_status"], "PASS")
         self.assertEqual(result[0]["application_readiness"], "REVIEW_REQUIRED")

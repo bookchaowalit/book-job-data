@@ -1,4 +1,5 @@
 """Contact redaction must survive Thai text and HTML-sourced Unicode spacing."""
+
 import unittest
 
 from book_job_data.privacy import EMAIL_MASK, PHONE_MASK, redact_text

@@ -1,4 +1,5 @@
 """The hourly ingest runner flags missing or stale scraper captures."""
+
 import importlib.util
 import os
 import tempfile

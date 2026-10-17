@@ -1,4 +1,5 @@
 """Runtime configuration for the separate Track B job data product."""
+
 from __future__ import annotations
 
 import os
